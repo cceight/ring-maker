@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>文字配置テスト</title>
+<title>APNG文字生成</title>
 
 <style>
 
@@ -13,10 +13,10 @@
 
 body{
   display:flex;
+  flex-direction:column;
   justify-content:center;
   align-items:center;
   height:100vh;
-  flex-direction:column;
 }
 
 #box{
@@ -32,7 +32,6 @@ body{
   width:100%;
 }
 
-
 #textLayer{
   position:absolute;
   top:298px;
@@ -43,55 +42,67 @@ body{
   color:black;
   text-align:center;
   white-space:nowrap;
+  pointer-events:none;
 }
-  
+
 </style>
 </head>
 <body>
 
 <div id="box">
-<input type="text" id="text">
+<input type="text" id="text" maxlength="8">
 <button onclick="showText()">出力</button>
 <button onclick="downloadImage()">ダウンロード</button>
 </div>
 
 <div id="stage">
-  <img id="bg" src="images/wood.png">
-  <div id="textLayer"></div>
+<img id="bg" src="images/wood.png">
+<div id="textLayer"></div>
 </div>
-  
+
 <script>
 
 const textY = 298;
-  
-ctx.font = "60px calligraphr";
-ctx.textAlign = "center";
-ctx.textBaseline = "top";
-ctx.fillText(text, canvas.width/2, textY);
-  
+const fontSize = 60;
+
 function showText(){
-  const t = document.getElementById("text").value;
+
+  const t = document.getElementById("text").value.trim();
+
+  if(t.length === 0){
+    document.getElementById("textLayer").textContent="";
+    return;
+  }
+
   document.getElementById("textLayer").textContent = t;
+
 }
 
 function downloadImage(){
+
+  const text = document.getElementById("textLayer").textContent;
+
+  if(!text){
+    alert("文字を入力してください");
+    return;
+  }
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
   const bg = document.getElementById("bg");
-  const text = document.getElementById("textLayer").textContent;
 
-  canvas.width = bg.width;
-  canvas.height = bg.height;
+  canvas.width = bg.naturalWidth;
+  canvas.height = bg.naturalHeight;
 
   ctx.drawImage(bg,0,0);
 
-  ctx.font = "48px calligraphr";
+  ctx.font = fontSize + "px calligraphr";
   ctx.textAlign = "center";
+  ctx.textBaseline = "top";
   ctx.fillStyle = "black";
 
-  ctx.fillText(text, canvas.width/2, 220);
+  ctx.fillText(text, canvas.width/2, textY);
 
   const link = document.createElement("a");
   link.download = "result.png";
@@ -104,30 +115,3 @@ function downloadImage(){
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
