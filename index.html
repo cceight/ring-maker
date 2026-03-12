@@ -57,9 +57,27 @@ window.showText = function() {
   document.getElementById("textLayer").textContent = t;
 };
 
-window.downloadWood = async function() {
+window.downloadGold = async function() {
   const text = document.getElementById("textLayer").textContent;
   if(!text){ alert("文字を入力してください"); return; }
+
+  const res = await fetch("images/gold.png");
+  console.log("fetch status:", res.status);
+  const buf = await res.arrayBuffer();
+  console.log("buffer length:", buf.byteLength);
+
+  if(buf.byteLength === 0){ alert("gold.png の読み込みに失敗"); return; }
+
+  let img;
+  try {
+    img = UPNG.decode(buf);
+  } catch(e){
+    console.error("UPNG decode error:", e);
+    alert("gold.png のデコードに失敗しました");
+    return;
+  }
+
+  console.log("UPNG decoded:", img);
 
   const img = new Image();
   img.src = "images/wood.png";
@@ -144,3 +162,4 @@ window.downloadGold = async function() {
 </script>
 </body>
 </html>
+
