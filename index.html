@@ -80,7 +80,8 @@ function showText(){
 
 function downloadImage(){
 
-  const text = document.getElementById("textLayer").textContent;
+  const textLayer = document.getElementById("textLayer");
+  const text = textLayer.textContent;
 
   if(!text){
     alert("文字を入力してください");
@@ -97,12 +98,18 @@ function downloadImage(){
 
   ctx.drawImage(bg,0,0);
 
-  ctx.font = fontSize + "px calligraphr";
+  const rect = textLayer.getBoundingClientRect();
+  const bgRect = bg.getBoundingClientRect();
+
+  const x = rect.left - bgRect.left + rect.width/2;
+  const y = rect.top - bgRect.top;
+
+  ctx.font = "60px calligraphr";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = "black";
 
-  ctx.fillText(text, canvas.width/2, textY);
+  ctx.fillText(text, x, y);
 
   const link = document.createElement("a");
   link.download = "result.png";
@@ -115,3 +122,4 @@ function downloadImage(){
 
 </body>
 </html>
+
