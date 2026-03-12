@@ -59,9 +59,16 @@ body{
   <img id="bg" src="images/wood.png">
   <div id="textLayer"></div>
 </div>
-
+  
 <script>
 
+const textY = 298;
+  
+ctx.font = "60px calligraphr";
+ctx.textAlign = "center";
+ctx.textBaseline = "top";
+ctx.fillText(text, canvas.width/2, textY);
+  
 function showText(){
   const t = document.getElementById("text").value;
   document.getElementById("textLayer").textContent = t;
@@ -97,6 +104,7 @@ function downloadImage(){
 
 </body>
 </html>
+
 
 
 
