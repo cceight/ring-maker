@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>APNG文字生成</title>
+<title>文字画像生成</title>
 
 <style>
 
@@ -50,9 +50,15 @@ body{
 <body>
 
 <div id="box">
+
 <input type="text" id="text" maxlength="8">
-<button onclick="showText()">出力</button>
-<button onclick="downloadImage()">ダウンロード</button>
+
+<button onclick="showText()">表示</button>
+
+<button onclick="downloadWood()">wood.png出力</button>
+
+<button onclick="downloadGold()">gold.png出力</button>
+
 </div>
 
 <div id="stage">
@@ -60,25 +66,33 @@ body{
 <div id="textLayer"></div>
 </div>
 
-<script>
+<script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.js"></script>
 
-const textY = 298;
-const fontSize = 60;
+<script>
 
 function showText(){
 
   const t = document.getElementById("text").value.trim();
-
-  if(t.length === 0){
-    document.getElementById("textLayer").textContent="";
-    return;
-  }
-
   document.getElementById("textLayer").textContent = t;
 
 }
 
-function downloadImage(){
+function getTextPosition(){
+
+  const textLayer = document.getElementById("textLayer");
+  const bg = document.getElementById("bg");
+
+  const rect = textLayer.getBoundingClientRect();
+  const bgRect = bg.getBoundingClientRect();
+
+  const x = rect.left - bgRect.left + rect.width/2;
+  let y = rect.top - bgRect.top;
+
+  return {x,y};
+
+}
+
+async function downloadWood(){
 
   const textLayer = document.getElementById("textLayer");
   const text = textLayer.textContent;
@@ -88,21 +102,20 @@ function downloadImage(){
     return;
   }
 
+  const img = new Image();
+  img.src = "images/wood.png";
+
+  await img.decode();
+
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
-  const bg = document.getElementById("bg");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
 
-  canvas.width = bg.naturalWidth;
-  canvas.height = bg.naturalHeight;
+  ctx.drawImage(img,0,0);
 
-  ctx.drawImage(bg,0,0);
-
-  const rect = textLayer.getBoundingClientRect();
-  const bgRect = bg.getBoundingClientRect();
-
-  const x = rect.left - bgRect.left + rect.width/2;
-  let y = rect.top - bgRect.top;
+  const pos = getTextPosition();
 
   ctx.font = "60px calligraphr";
   ctx.textAlign = "center";
@@ -111,21 +124,98 @@ function downloadImage(){
 
   const metrics = ctx.measureText(text);
 
+  let y = pos.y;
+
   if(metrics.actualBoundingBoxAscent){
       y += metrics.actualBoundingBoxAscent;
   }
 
-  ctx.fillText(text, x, y);
+  ctx.fillText(text,pos.x,y);
 
   const link = document.createElement("a");
-  link.download = "result.png";
+  link.download = "wood_result.png";
   link.href = canvas.toDataURL("image/png");
   link.click();
+
+}
+
+async function downloadGold(){
+
+  const textLayer = document.getElementById("textLayer");
+  const text = textLayer.textContent;
+
+  if(!text){
+    alert("文字を入力してください");
+    return;
+  }
+
+  const response = await fetch("images/gold.png");
+  const buffer = await response.arrayBuffer();
+
+  const apng = UPNG.decode(buffer);
+  const frames = UPNG.toRGBA8(apng);
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = apng.width;
+  canvas.height = apng.height;
+
+  const pos = getTextPosition();
+
+  const newFrames = [];
+
+  for(let i=0;i<frames.length;i++){
+
+    const imgData = new ImageData(
+      new Uint8ClampedArray(frames[i]),
+      apng.width,
+      apng.height
+    );
+
+    ctx.putImageData(imgData,0,0);
+
+    ctx.font = "60px calligraphr";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "black";
+
+    const metrics = ctx.measureText(text);
+
+    let y = pos.y;
+
+    if(metrics.actualBoundingBoxAscent){
+        y += metrics.actualBoundingBoxAscent;
+    }
+
+    ctx.fillText(text,pos.x,y);
+
+    const frame = ctx.getImageData(0,0,canvas.width,canvas.height);
+    newFrames.push(frame.data.buffer);
+
+  }
+
+  const delays = apng.frames.map(f => f.delay);
+
+  const encoded = UPNG.encode(
+    newFrames,
+    canvas.width,
+    canvas.height,
+    0,
+    delays
+  );
+
+  const blob = new Blob([encoded],{type:"image/png"});
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "gold_result.apng";
+  link.click();
+
 }
 
 </script>
 
 </body>
 </html>
-
-
