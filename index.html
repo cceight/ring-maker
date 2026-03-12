@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>文字表示テスト</title>
+<title>文字配置テスト</title>
 
 <style>
 
@@ -16,42 +16,53 @@ body{
   justify-content:center;
   align-items:center;
   height:100vh;
+  flex-direction:column;
 }
 
 #box{
-  display:flex;
-  gap:10px;
+  margin-bottom:20px;
 }
 
-#output{
-  margin-top:20px;
-  font-size:60px;
+#stage{
+  position:relative;
+  width:500px;
+}
+
+#bg{
+  width:100%;
+}
+
+#textLayer{
+  position:absolute;
+  top:200px;     /* 文字の位置 */
+  left:150px;    /* 文字の位置 */
+  font-size:48px;
   font-family:"calligraphr";
-  text-align:center;
+  color:black;
 }
 
 </style>
 </head>
 <body>
 
-<div>
-  <div id="box">
-    <input type="text" id="text">
-    <button onclick="showText()">出力</button>
-  </div>
+<div id="box">
+<input type="text" id="text">
+<button onclick="showText()">出力</button>
+</div>
 
-  <div id="output"></div>
+<div id="stage">
+  <img id="bg" src="images/background.png">
+  <div id="textLayer"></div>
 </div>
 
 <script>
 
 function showText(){
   const t = document.getElementById("text").value;
-  document.getElementById("output").textContent = t;
+  document.getElementById("textLayer").textContent = t;
 }
 
 </script>
 
 </body>
 </html>
-
