@@ -144,6 +144,85 @@
       border-top: 1px solid var(--border);
       padding-top: 1rem;
     }
+
+    /* ── コントロールパネル ── */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1.2rem;
+    }
+    .ctrl-title {
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: -0.4rem;
+    }
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .ctrl-row label {
+      width: 5.5em;
+      flex-shrink: 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .ctrl-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--gold);
+      cursor: pointer;
+    }
+    .ctrl-row input[type="color"] {
+      width: 2.4rem;
+      height: 2rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+      padding: 2px;
+    }
+    .ctrl-val {
+      font-size: 0.8rem;
+      color: var(--text);
+      min-width: 3.2em;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* プレビューを常時表示 */
+    #preview-wrap { display: flex; }
+    #preview-canvas { border-radius: 8px; max-width: 100%; border: 1px solid var(--border); }
+
+    .preview-toggle {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .toggle-btn {
+      flex: 1;
+      min-width: auto;
+      padding: 0.4rem 1.2rem;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 5px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+    .toggle-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
   </style>
 </head>
 <body>
@@ -154,17 +233,68 @@
   <label for="kana-input">ひらがなを入力</label>
   <input type="text" id="kana-input" placeholder="あいうえお" value="あ">
 
-  <div class="btn-row">
-    <button class="btn-preview" onclick="showPreview()">👁 プレビュー</button>
-    <button class="btn-wood"    onclick="downloadWood()">🪵 Wood PNG</button>
-    <button class="btn-gold"    id="btn-gold" onclick="downloadGold()">✨ Gold APNG</button>
+  <!-- ── コントロールパネル ── -->
+  <div class="controls">
+    <p class="ctrl-title">文字スタイル調整</p>
+
+    <div class="ctrl-row">
+      <label>サイズ</label>
+      <input type="range" id="ctrl-size" min="20" max="300" value="58" oninput="onCtrlChange()">
+      <span class="ctrl-val" id="val-size">58px</span>
+    </div>
+
+    <div class="ctrl-row">
+      <label>横位置</label>
+      <input type="range" id="ctrl-x" min="0" max="100" value="50" oninput="onCtrlChange()">
+      <span class="ctrl-val" id="val-x">50%</span>
+    </div>
+
+    <div class="ctrl-row">
+      <label>縦位置</label>
+      <input type="range" id="ctrl-y" min="0" max="100" value="75" oninput="onCtrlChange()">
+      <span class="ctrl-val" id="val-y">75%</span>
+    </div>
+
+    <div class="ctrl-row">
+      <label>文字色</label>
+      <input type="color" id="ctrl-color" value="#000000" oninput="onCtrlChange()">
+      <span class="ctrl-val" id="val-color">#000000</span>
+    </div>
+
+    <div class="ctrl-row">
+      <label>影の濃さ</label>
+      <input type="range" id="ctrl-shadow" min="0" max="100" value="0" oninput="onCtrlChange()">
+      <span class="ctrl-val" id="val-shadow">0%</span>
+    </div>
+
+    <div class="ctrl-row">
+      <label>アウトライン</label>
+      <input type="range" id="ctrl-outline" min="0" max="20" value="3" oninput="onCtrlChange()">
+      <span class="ctrl-val" id="val-outline">3px</span>
+    </div>
+
+    <div class="ctrl-row">
+      <label>縁取り色</label>
+      <input type="color" id="ctrl-outline-color" value="#000000" oninput="onCtrlChange()">
+      <span class="ctrl-val" id="val-outline-color">#000000</span>
+    </div>
   </div>
 
-  <p id="status">準備完了</p>
-
-  <div id="preview-wrap">
+  <!-- ── プレビュー（常時表示） ── -->
+  <div id="preview-wrap" style="flex-direction:column;align-items:center;gap:0.8rem;">
+    <div class="preview-toggle">
+      <button id="toggle-wood" class="toggle-btn active" onclick="setPreviewMode('wood')">🪵 Wood</button>
+      <button id="toggle-gold" class="toggle-btn"        onclick="setPreviewMode('gold')">✨ Gold</button>
+    </div>
     <canvas id="preview-canvas" width="480" height="480"></canvas>
   </div>
+
+  <div class="btn-row">
+    <button class="btn-wood"  onclick="downloadWood()">🪵 Wood PNG</button>
+    <button class="btn-gold"  id="btn-gold" onclick="downloadGold()">✨ Gold APNG</button>
+  </div>
+
+  <p id="status">フォント読み込み中…</p>
 
   <p class="note">
     ※ フォント: <code>fonts/Calligraphr-Regular.otf</code><br>
@@ -175,7 +305,7 @@
 
 <script>
 // ─────────────────────────────────────────────
-//  設定
+//  固定設定
 // ─────────────────────────────────────────────
 const FONT_URL  = 'fonts/Calligraphr-Regular.otf';
 const FONT_NAME = 'CalligraphrRegular';
@@ -183,7 +313,35 @@ const WOOD_URL  = 'images/wood.png';
 const GOLD_URL  = 'images/gold.png';
 const CANVAS_W  = 480;
 const CANVAS_H  = 480;
-const FONT_SIZE = 96; // px（必要に応じて調整）
+
+// ─────────────────────────────────────────────
+//  コントロールから設定を読む
+// ─────────────────────────────────────────────
+function getTextStyle() {
+  return {
+    size:         parseInt(document.getElementById('ctrl-size').value),
+    xPct:         parseInt(document.getElementById('ctrl-x').value) / 100,
+    yPct:         parseInt(document.getElementById('ctrl-y').value) / 100,
+    color:        document.getElementById('ctrl-color').value,
+    shadowAlpha:  parseInt(document.getElementById('ctrl-shadow').value) / 100,
+    outlineWidth: parseInt(document.getElementById('ctrl-outline').value),
+    outlineColor: document.getElementById('ctrl-outline-color').value,
+  };
+}
+
+// コントロール変更時：ラベル更新 + プレビュー再描画
+function onCtrlChange() {
+  document.getElementById('val-size').textContent         = document.getElementById('ctrl-size').value + 'px';
+  document.getElementById('val-x').textContent            = document.getElementById('ctrl-x').value + '%';
+  document.getElementById('val-y').textContent            = document.getElementById('ctrl-y').value + '%';
+  document.getElementById('val-color').textContent        = document.getElementById('ctrl-color').value;
+  document.getElementById('val-shadow').textContent       = document.getElementById('ctrl-shadow').value + '%';  document.getElementById('val-outline').textContent      = document.getElementById('ctrl-outline').value + 'px';
+  document.getElementById('val-outline-color').textContent = document.getElementById('ctrl-outline-color').value;
+  refreshPreview();
+}
+
+// テキスト入力変更時もプレビュー更新
+document.getElementById('kana-input').addEventListener('input', refreshPreview);
 
 // ─────────────────────────────────────────────
 //  フォントの事前ロード
@@ -191,39 +349,70 @@ const FONT_SIZE = 96; // px（必要に応じて調整）
 let fontReady = false;
 
 async function loadFont() {
+  if (fontReady) return;
   try {
     const font = new FontFace(FONT_NAME, `url(${FONT_URL})`);
     await font.load();
     document.fonts.add(font);
     fontReady = true;
-    console.log('フォント読み込み完了');
   } catch (e) {
-    console.warn('カスタムフォントの読み込みに失敗しました。システムフォントを使用します:', e);
-    // フォントがなくてもシステムフォントで続行
+    console.warn('カスタムフォントの読み込みに失敗。システムフォントを使用:', e);
     fontReady = true;
   }
 }
 
 // ─────────────────────────────────────────────
-//  ユーティリティ: URL → ArrayBuffer
+//  テキスト描画（スタイル設定を受け取る）
 // ─────────────────────────────────────────────
-async function fetchBuffer(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`画像の取得に失敗: ${url} (${res.status})`);
-  return res.arrayBuffer();
+function drawText(ctx, text, style) {
+  const { size, xPct, yPct, color, shadowAlpha, outlineWidth, outlineColor } = style;
+  const x = CANVAS_W * xPct;
+  const y = CANVAS_H * yPct;
+  const fontFamily = fontReady ? `"${FONT_NAME}", serif` : 'serif';
+
+  ctx.font         = `${size}px ${fontFamily}`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+
+  // 影
+  if (shadowAlpha > 0) {
+    ctx.shadowColor   = `rgba(0,0,0,${shadowAlpha})`;
+    ctx.shadowBlur    = Math.max(4, size * 0.08);
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+  }
+
+  // アウトライン（縁取り）- 影より先に描くと影がアウトラインにも乗る
+  if (outlineWidth > 0) {
+    ctx.lineWidth   = outlineWidth * 2; // strokeText は中心線基準なので2倍
+    ctx.lineJoin    = 'round';
+    ctx.strokeStyle = outlineColor;
+    ctx.strokeText(text, x, y);
+  }
+
+  // 影をリセット（fill には影を乗せない場合はここでリセット、乗せたい場合は残す）
+  // ※ 影＋アウトライン両方なので fill 側にも影を残す
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+
+  // 後片付け
+  ctx.shadowColor   = 'transparent';
+  ctx.shadowBlur    = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
 }
 
 // ─────────────────────────────────────────────
-//  ユーティリティ: Canvas に背景 + 文字を描画
+//  Canvas に背景画像 + 文字を描画
 // ─────────────────────────────────────────────
-function drawTextOnCanvas(canvas, imgSrc, text) {
+function drawTextOnCanvas(canvas, imgSrc, text, style) {
   return new Promise((resolve, reject) => {
     const ctx = canvas.getContext('2d');
     const img = new Image();
     img.onload = () => {
       ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
       ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
-      drawText(ctx, text);
+      drawText(ctx, text, style);
       resolve();
     };
     img.onerror = () => reject(new Error('画像の描画に失敗しました'));
@@ -231,26 +420,34 @@ function drawTextOnCanvas(canvas, imgSrc, text) {
   });
 }
 
-function drawText(ctx, text) {
-  const fontFamily = fontReady ? `"${FONT_NAME}", serif` : 'serif';
-  ctx.font        = `${FONT_SIZE}px ${fontFamily}`;
-  ctx.textAlign   = 'center';
-  ctx.textBaseline = 'middle';
+// ─────────────────────────────────────────────
+//  リアルタイムプレビュー（Wood / Gold 切り替え対応）
+// ─────────────────────────────────────────────
+let previewMode = 'wood'; // 'wood' | 'gold'
 
-  // 影でくっきり見せる
-  ctx.shadowColor  = 'rgba(0,0,0,0.6)';
-  ctx.shadowBlur   = 8;
-  ctx.shadowOffsetX = 2;
-  ctx.shadowOffsetY = 2;
+function setPreviewMode(mode) {
+  previewMode = mode;
+  document.getElementById('toggle-wood').classList.toggle('active', mode === 'wood');
+  document.getElementById('toggle-gold').classList.toggle('active', mode === 'gold');
+  refreshPreview();
+}
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(text, CANVAS_W / 2, CANVAS_H / 2);
+let previewPending = false;
+async function refreshPreview() {
+  if (previewPending) return;
+  previewPending = true;
+  await new Promise(r => setTimeout(r, 16)); // デバウンス
+  previewPending = false;
 
-  // 影をリセット
-  ctx.shadowColor  = 'transparent';
-  ctx.shadowBlur   = 0;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
+  const text   = document.getElementById('kana-input').value || '　';
+  const canvas = document.getElementById('preview-canvas');
+  const style  = getTextStyle();
+  const url    = previewMode === 'gold' ? GOLD_URL : WOOD_URL;
+  try {
+    await drawTextOnCanvas(canvas, url, text, style);
+  } catch (e) {
+    // プレビュー失敗は無視（ローカルでは fetch が動かない場合あり）
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -263,28 +460,20 @@ function setStatus(msg, type = '') {
 }
 
 // ─────────────────────────────────────────────
-//  プレビュー（wood.png ベース）
+//  ユーティリティ: URL → ArrayBuffer
 // ─────────────────────────────────────────────
-async function showPreview() {
-  const text   = document.getElementById('kana-input').value || '　';
-  const canvas = document.getElementById('preview-canvas');
-  try {
-    setStatus('プレビュー生成中…');
-    await loadFont();
-    await drawTextOnCanvas(canvas, WOOD_URL, text);
-    document.getElementById('preview-wrap').classList.add('visible');
-    setStatus('プレビュー表示中', 'ok');
-  } catch (e) {
-    setStatus('エラー: ' + e.message, 'error');
-    console.error(e);
-  }
+async function fetchBuffer(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`画像の取得に失敗: ${url} (${res.status})`);
+  return res.arrayBuffer();
 }
 
 // ─────────────────────────────────────────────
 //  Wood PNG ダウンロード
 // ─────────────────────────────────────────────
 async function downloadWood() {
-  const text = document.getElementById('kana-input').value || '　';
+  const text  = document.getElementById('kana-input').value || '　';
+  const style = getTextStyle();
   try {
     setStatus('Wood PNG 生成中…');
     await loadFont();
@@ -292,12 +481,10 @@ async function downloadWood() {
     const canvas = document.createElement('canvas');
     canvas.width  = CANVAS_W;
     canvas.height = CANVAS_H;
-    await drawTextOnCanvas(canvas, WOOD_URL, text);
+    await drawTextOnCanvas(canvas, WOOD_URL, text, style);
 
     canvas.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      triggerDownload(url, 'wood_text.png');
-      URL.revokeObjectURL(url);
+      triggerDownload(URL.createObjectURL(blob), 'wood_text.png');
       setStatus('Wood PNG ダウンロード完了！', 'ok');
     }, 'image/png');
   } catch (e) {
@@ -307,81 +494,49 @@ async function downloadWood() {
 }
 
 // ─────────────────────────────────────────────
-//  Gold APNG ダウンロード（メイン修正箇所）
+//  Gold APNG ダウンロード
 // ─────────────────────────────────────────────
 async function downloadGold() {
-  // ── 事前チェック ──────────────────────────
-  if (typeof UPNG === 'undefined') {
-    setStatus('エラー: UPNG.js が読み込まれていません', 'error');
-    return;
-  }
-  if (typeof pako === 'undefined') {
-    setStatus('エラー: pako が読み込まれていません（UPNG の依存ライブラリ）', 'error');
-    return;
-  }
+  if (typeof UPNG === 'undefined') { setStatus('エラー: UPNG.js が読み込まれていません', 'error'); return; }
+  if (typeof pako === 'undefined') { setStatus('エラー: pako が読み込まれていません', 'error'); return; }
 
-  const text = document.getElementById('kana-input').value || '　';
-  const btn  = document.getElementById('btn-gold');
+  const text  = document.getElementById('kana-input').value || '　';
+  const style = getTextStyle();
+  const btn   = document.getElementById('btn-gold');
   btn.disabled = true;
 
   try {
     setStatus('Gold APNG を読み込み中…');
     await loadFont();
 
-    // 1. APNG のバイナリを取得
-    const buf = await fetchBuffer(GOLD_URL);
-
-    // 2. UPNG.js でフレームに分解
-    setStatus('フレームを解析中…');
+    const buf    = await fetchBuffer(GOLD_URL);
     const png    = UPNG.decode(buf);
-    const frames = UPNG.toRGBA8(png); // 各フレームの RGBA8 Uint8Array の配列
-
+    const frames = UPNG.toRGBA8(png);
     const width  = png.width;
     const height = png.height;
-    const delays = png.frames.map(f => f.delay ?? 100); // フレームの表示時間(ms)
+    const delays = png.frames.map(f => f.delay ?? 100);
 
-    setStatus(`フレーム合成中（全 ${frames.length} フレーム）…`);
-
-    // 3. 各フレームに文字を描画して RGBA8 データを作成
     const canvas = document.createElement('canvas');
     canvas.width  = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-
     const newFrames = [];
 
     for (let i = 0; i < frames.length; i++) {
-      // フレームの RGBA8 を ImageData に変換して Canvas に描画
-      const imageData = new ImageData(new Uint8ClampedArray(frames[i]), width, height);
-      ctx.putImageData(imageData, 0, 0);
-
-      // 文字を重ねる
-      drawText(ctx, text);
-
-      // 描画結果を RGBA8 として取得
-      const composited = ctx.getImageData(0, 0, width, height);
-      newFrames.push(composited.data.buffer);
+      ctx.putImageData(new ImageData(new Uint8ClampedArray(frames[i]), width, height), 0, 0);
+      drawText(ctx, text, style);
+      newFrames.push(ctx.getImageData(0, 0, width, height).data.buffer);
 
       if (i % 10 === 0) {
         setStatus(`フレーム合成中… ${i + 1} / ${frames.length}`);
-        // UI をブロックしないよう 1 tick 譲る
         await new Promise(r => setTimeout(r, 0));
       }
     }
 
-    // 4. UPNG.js で APNG として再エンコード
     setStatus('APNG エンコード中…');
-
-    // delays は ms 単位 → UPNG は centi-seconds ではなく ms をそのまま受け取る
-    // （UPNG.encode の第4引数は各フレームの delay ms の配列）
     const encoded = UPNG.encode(newFrames, width, height, 0, delays);
-
-    // 5. ダウンロード
-    const blob = new Blob([encoded], { type: 'image/png' });
-    const url  = URL.createObjectURL(blob);
-    triggerDownload(url, 'gold_text.png');
-    URL.revokeObjectURL(url);
-
+    const blob    = new Blob([encoded], { type: 'image/png' });
+    triggerDownload(URL.createObjectURL(blob), 'gold_text.png');
     setStatus('Gold APNG ダウンロード完了！', 'ok');
   } catch (e) {
     setStatus('エラー: ' + e.message, 'error');
@@ -396,15 +551,19 @@ async function downloadGold() {
 // ─────────────────────────────────────────────
 function triggerDownload(url, filename) {
   const a = document.createElement('a');
-  a.href     = url;
-  a.download = filename;
-  a.click();
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ─────────────────────────────────────────────
-//  ページ読み込み時にフォントを先読み
+//  初期化
 // ─────────────────────────────────────────────
-loadFont();
+(async () => {
+  onCtrlChange(); // ラベル初期化
+  await loadFont();
+  setStatus('準備完了', 'ok');
+  refreshPreview();
+})();
 </script>
 </body>
 </html>
