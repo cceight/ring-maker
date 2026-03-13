@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ジパング島立腕輪発行センター</title>
+  <title>文字入り画像ジェネレーター</title>
 
   <!-- ★ 重要: pako を UPNG より先に読み込む -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
@@ -243,7 +243,7 @@
 </head>
 <body>
 
-<h1>ジパング島立腕輪発行センター</h1>
+<h1>文字入り画像ジェネレーター</h1>
 
 <div class="layout">
 
@@ -299,6 +299,12 @@
       <span class="ctrl-val" id="val-outline-color">#000000</span>
     </div>
 
+    <div class="ctrl-row">
+      <label>アーチ</label>
+      <input type="range" id="ctrl-arch" min="-100" max="100" value="0" oninput="onCtrlChange()">
+      <span class="ctrl-val" id="val-arch">0</span>
+    </div>
+
   </div>
 
   <!-- ── 右パネル：プレビュー + ダウンロード ── -->
@@ -350,6 +356,7 @@ function getTextStyle() {
     shadowAlpha:  parseInt(document.getElementById('ctrl-shadow').value) / 100,
     outlineWidth: parseInt(document.getElementById('ctrl-outline').value),
     outlineColor: document.getElementById('ctrl-outline-color').value,
+    arch:         parseInt(document.getElementById('ctrl-arch').value),
   };
 }
 
@@ -362,6 +369,7 @@ function onCtrlChange() {
   document.getElementById('val-shadow').textContent        = document.getElementById('ctrl-shadow').value + '%';
   document.getElementById('val-outline').textContent       = document.getElementById('ctrl-outline').value + 'px';
   document.getElementById('val-outline-color').textContent = document.getElementById('ctrl-outline-color').value;
+  document.getElementById('val-arch').textContent          = document.getElementById('ctrl-arch').value;
   refreshPreview();
 }
 
@@ -390,39 +398,110 @@ async function loadFont() {
 //  テキスト描画（スタイル設定を受け取る）
 // ─────────────────────────────────────────────
 function drawText(ctx, text, style) {
-  const { size, xPct, yPct, color, shadowAlpha, outlineWidth, outlineColor } = style;
-  const x = CANVAS_W * xPct;
-  const y = CANVAS_H * yPct;
+  const { size, xPct, yPct, color, shadowAlpha, outlineWidth, outlineColor, arch } = style;
+  const cx = CANVAS_W * xPct;
+  const cy = CANVAS_H * yPct;
   const fontFamily = fontReady ? `"${FONT_NAME}", serif` : 'serif';
 
   ctx.font         = `${size}px ${fontFamily}`;
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
 
-  // 影
-  if (shadowAlpha > 0) {
-    ctx.shadowColor   = `rgba(0,0,0,${shadowAlpha})`;
-    ctx.shadowBlur    = Math.max(4, size * 0.08);
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
+  // 影の設定
+  const setShadow = () => {
+    if (shadowAlpha > 0) {
+      ctx.shadowColor   = `rgba(0,0,0,${shadowAlpha})`;
+      ctx.shadowBlur    = Math.max(4, size * 0.08);
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+    }
+  };
+  const clearShadow = () => {
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+  };
+
+  // ── アーチなし：通常描画 ──
+  if (arch === 0) {
+    setShadow();
+    if (outlineWidth > 0) {
+      ctx.lineWidth = outlineWidth * 2; ctx.lineJoin = 'round';
+      ctx.strokeStyle = outlineColor;
+      ctx.strokeText(text, cx, cy);
+    }
+    ctx.fillStyle = color;
+    ctx.fillText(text, cx, cy);
+    clearShadow();
+    return;
   }
 
-  // アウトライン（縁取り）
+  // ── アーチあり：1文字ずつ円弧上に配置 ──
+  //
+  // arch > 0 → 上アーチ（文字が弧を描いて上に膨らむ）
+  // arch < 0 → 下アーチ（逆アーチ）
+  //
+  // 半径は文字列全体の長さと arch の強さから算出
+  ctx.textBaseline = 'alphabetic';
+
+  const chars = [...text]; // サロゲートペア対応
+  const n     = chars.length;
+
+  // 各文字の幅を計測
+  const widths = chars.map(c => ctx.measureText(c).width);
+  const totalW = widths.reduce((a, b) => a + b, 0);
+
+  // arch 値 → 半径に変換（絶対値が大きいほど曲がりが強い ＝ 半径が小さい）
+  // arch=±1 ではほぼ直線、±100 でかなりきつい弧
+  const minR  = totalW * 0.3;          // 最小半径（文字列幅の30%）
+  const maxR  = totalW * 20;           // ほぼ直線に近い最大半径
+  const t     = Math.abs(arch) / 100;  // 0〜1
+  const R     = maxR - (maxR - minR) * t; // 半径
+  const sign  = arch > 0 ? -1 : 1;    // +: 上アーチ（中心が下）/ -: 下アーチ（中心が上）
+
+  // 円弧の中心Y（文字描画基準点より上 or 下）
+  const centerY = cy + sign * R;
+
+  // 文字列全体がまたぐ総角度
+  const totalAngle = totalW / R; // ラジアン
+
+  // 各文字の角度オフセットを累積
+  let cumW = 0;
+  const angles = chars.map((_, i) => {
+    const offset = cumW + widths[i] / 2;
+    cumW += widths[i];
+    return offset;
+  });
+
+  const startAngle = -Math.PI / 2 - (totalAngle / 2); // 最初の文字の角度（円の頂点を基準）
+
+  // 描画ヘルパー：stroke or fill を1文字ずつ
+  const drawChar = (c, angle, doStroke) => {
+    ctx.save();
+    ctx.translate(
+      cx + R * Math.cos(startAngle + angle / R),
+      centerY + R * Math.sin(startAngle + angle / R)
+    );
+    // 文字を円の接線方向に回転
+    ctx.rotate(startAngle + angle / R + Math.PI / 2);
+    if (doStroke) {
+      ctx.lineWidth   = outlineWidth * 2;
+      ctx.lineJoin    = 'round';
+      ctx.strokeStyle = outlineColor;
+      ctx.strokeText(c, 0, 0);
+    } else {
+      setShadow();
+      ctx.fillStyle = color;
+      ctx.fillText(c, 0, 0);
+      clearShadow();
+    }
+    ctx.restore();
+  };
+
+  // アウトラインを先に全文字描画してから、fillを重ねる
   if (outlineWidth > 0) {
-    ctx.lineWidth   = outlineWidth * 2;
-    ctx.lineJoin    = 'round';
-    ctx.strokeStyle = outlineColor;
-    ctx.strokeText(text, x, y);
+    angles.forEach((a, i) => drawChar(chars[i], a, true));
   }
-
-  ctx.fillStyle = color;
-  ctx.fillText(text, x, y);
-
-  // 後片付け
-  ctx.shadowColor   = 'transparent';
-  ctx.shadowBlur    = 0;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
+  angles.forEach((a, i) => drawChar(chars[i], a, false));
 }
 
 // ─────────────────────────────────────────────
@@ -587,4 +666,3 @@ function triggerDownload(url, filename) {
 </script>
 </body>
 </html>
-
