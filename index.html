@@ -434,48 +434,45 @@ function drawText(ctx, text, style) {
     return;
   }
 
-  // ── アーチあり：1文字ずつ円弧上に配置 ──
+  // ── アーチあり：sagitta（弦の高さ）ベースで配置 ──
   //
-  // 設計：文字列の中央が常に (cx, cy) に来るように配置する
-  //   arch > 0 → 上アーチ（弧が上に膨らむ）→ 円の中心は cy の下
-  //   arch < 0 → 下アーチ（弧が下に膨らむ）→ 円の中心は cy の上
+  // 【設計】
+  //   s = sagitta = arch値をpxに換算した「弦の中央の膨らみ量」
+  //   文字列を直線に並べたときの「弦の長さ」を L とすると
+  //   円の半径 R = (L²/4 + s²) / (2s)  ← sagittaの公式
   //
-  ctx.textBaseline = 'middle';
+  //   弧の中点（= 文字列中央）が常に (cx, cy) になるよう配置する
+  //   arch > 0 → 上アーチ: 中点より弦が下 → 円の中心は cy の下方
+  //   arch < 0 → 下アーチ: 中点より弦が上 → 円の中心は cy の上方
 
   const chars = [...text];
-
-  // 各文字の幅を計測
   const widths = chars.map(c => ctx.measureText(c).width);
-  const totalW = widths.reduce((a, b) => a + b, 0);
+  const L = widths.reduce((a, b) => a + b, 0); // 弦の長さ
 
-  // arch(±1〜±100) → 半径 R を算出
-  // |arch|が大きいほど R が小さく（より強く曲がる）
-  // 文字が1文字のときは totalW が 0 に近いので固定最小値を設ける
-  const baseW = Math.max(totalW, size);
-  const t = Math.abs(arch) / 100;             // 0〜1
-  const maxR = baseW * 15;                    // ほぼ直線
-  const minR = baseW * 0.6;                   // 最もきつい弧
-  const R = maxR - (maxR - minR) * t;
+  // arch(±1〜±100) → sagitta(px)
+  // arch=±100 でキャンバス高さの約30%分の膨らみ
+  const maxSag = CANVAS_H * 0.30;
+  const s = (Math.abs(arch) / 100) * maxSag; // 常に正
 
-  // arch の符号：上アーチ(+) → 中心が下(+Y)、下アーチ(-) → 中心が上(-Y)
+  // 半径を sagitta の公式で算出（L=0対策：最小弦長をsizeに）
+  const Leff = Math.max(L, size * 0.5);
+  const R = (Leff * Leff / 4 + s * s) / (2 * s);
+
+  // arch符号：上アーチ(+) → 弧の頂点が上 → 円の中心は cy より下
   const sign = arch > 0 ? 1 : -1;
-
-  // 文字列全体がまたぐ総角度
-  const totalAngle = totalW / R;  // ラジアン
-
-  // 円弧の中心座標
-  // 中央文字が (cx, cy) に来るには、
-  // 中心 = (cx, cy + sign*R) とする（上アーチなら中心がcyより下）
   const centerX = cx;
-  const centerY = cy + sign * R;
+  const centerY = cy + sign * R;  // 円の中心
 
-  // 中央を -π/2（真上）として左右に広げる
-  // 上アーチ時：中心が下なので真上 = cy 方向 = 弧の頂点
-  // 下アーチ時：中心が上なので真下 = cy 方向 = 弧の頂点
-  const apexAngle  = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+  // 弧の頂点から左右に広がる開始角度
+  // 上アーチ: 頂点 = 円の真上 = 角度 -π/2、中心が下にある
+  // 下アーチ: 頂点 = 円の真下 = 角度 +π/2、中心が上にある
+  const apexAngle = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+
+  // 文字列全体の弧長に対応する総角度
+  const totalAngle = L / R;
   const startAngle = apexAngle - totalAngle / 2;
 
-  // 各文字の弧上オフセット（弧長）を累積
+  // 各文字の弧長オフセット（文字中心）
   let cumW = 0;
   const arcOffsets = chars.map((_, i) => {
     const offset = cumW + widths[i] / 2;
@@ -491,7 +488,6 @@ function drawText(ctx, text, style) {
       centerX + R * Math.cos(angle),
       centerY + R * Math.sin(angle)
     );
-    // 接線方向に回転（文字が円弧に沿って立つ）
     ctx.rotate(angle + Math.PI / 2);
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
@@ -509,7 +505,6 @@ function drawText(ctx, text, style) {
     ctx.restore();
   };
 
-  // アウトラインを全文字先に描いてからfillを重ねる
   if (outlineWidth > 0) {
     arcOffsets.forEach((a, i) => drawChar(chars[i], a, true));
   }
