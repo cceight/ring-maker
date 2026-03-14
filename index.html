@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>腕輪メーカー</title>
+  <title>文字入り画像ジェネレーター</title>
 
   <!-- ★ 重要: pako を UPNG より先に読み込む -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
@@ -243,7 +243,7 @@
 </head>
 <body>
 
-<h1>ジパング島立腕輪加工センター ver0.02</h1>
+<h1>文字入り画像ジェネレーター</h1>
 
 <div class="layout">
 
@@ -458,19 +458,20 @@ function drawText(ctx, text, style) {
   const Leff = Math.max(L, size * 0.5);
   const R = (Leff * Leff / 4 + s * s) / (2 * s);
 
-  // arch符号：上アーチ(+) → 弧の頂点が上 → 円の中心は cy より下
+  // arch符号：上アーチ(+) → 円の中心は cy より下、下アーチ(-) → cy より上
   const sign = arch > 0 ? 1 : -1;
   const centerX = cx;
   const centerY = cy + sign * R;  // 円の中心
 
-  // 弧の頂点から左右に広がる開始角度
-  // 上アーチ: 頂点 = 円の真上 = 角度 -π/2、中心が下にある
-  // 下アーチ: 頂点 = 円の真下 = 角度 +π/2、中心が上にある
-  const apexAngle = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
-
-  // 文字列全体の弧長に対応する総角度
+  // 弧の頂点角度：常に -π/2（円の真上）を使う
+  // 上アーチ: 中心が cy の下 → 真上 = cy の方向 ✓
+  // 下アーチ: 中心が cy の上 → 真下 = cy の方向だが、
+  //           あえて -π/2 を使い、文字の向きを保ったまま弧を反転させる
+  const apexAngle  = -Math.PI / 2;
   const totalAngle = L / R;
-  const startAngle = apexAngle - totalAngle / 2;
+  // 下アーチは左右を反転させる（文字順を保ちつつ弧を下向きに）
+  const startAngle = apexAngle + (sign > 0 ? -1 : 1) * totalAngle / 2;
+  const angleStep  = sign; // +1: 左→右、-1: 右→左（反転打消し用）
 
   // 各文字の弧長オフセット（文字中心）
   let cumW = 0;
@@ -482,13 +483,15 @@ function drawText(ctx, text, style) {
 
   // 1文字描画ヘルパー
   const drawChar = (c, arcLen, doStroke) => {
-    const angle = startAngle + arcLen / R;
+    const angle = startAngle + angleStep * arcLen / R;
     ctx.save();
     ctx.translate(
       centerX + R * Math.cos(angle),
       centerY + R * Math.sin(angle)
     );
-    ctx.rotate(angle + Math.PI / 2);
+    // 上アーチ: angle + π/2 で文字が上向き
+    // 下アーチ: sign=-1 なので angle - π/2 → 文字が下向きにならず正立を保つ
+    ctx.rotate(angle + sign * Math.PI / 2);
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     if (doStroke) {
