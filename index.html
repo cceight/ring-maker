@@ -435,43 +435,20 @@ function drawText(ctx, text, style) {
   }
 
   // ── アーチあり：sagitta（弦の高さ）ベースで配置 ──
-  //
-  // 【設計】
-  //   s = sagitta = arch値をpxに換算した「弦の中央の膨らみ量」
-  //   文字列を直線に並べたときの「弦の長さ」を L とすると
-  //   円の半径 R = (L²/4 + s²) / (2s)  ← sagittaの公式
-  //
-  //   弧の中点（= 文字列中央）が常に (cx, cy) になるよう配置する
-  //   arch > 0 → 上アーチ: 中点より弦が下 → 円の中心は cy の下方
-  //   arch < 0 → 下アーチ: 中点より弦が上 → 円の中心は cy の上方
-
   const chars = [...text];
   const widths = chars.map(c => ctx.measureText(c).width);
-  const L = widths.reduce((a, b) => a + b, 0); // 弦の長さ
+  const L = widths.reduce((a, b) => a + b, 0);
 
   // arch(±1〜±100) → sagitta(px)
-  // arch=±100 でキャンバス高さの約30%分の膨らみ
   const maxSag = CANVAS_H * 0.30;
-  const s = (Math.abs(arch) / 100) * maxSag; // 常に正
+  const s = (Math.abs(arch) / 100) * maxSag;
 
-  // 半径を sagitta の公式で算出（L=0対策：最小弦長をsizeに）
+  // 半径を sagitta の公式で算出
   const Leff = Math.max(L, size * 0.5);
   const R = (Leff * Leff / 4 + s * s) / (2 * s);
 
-  // arch符号：上アーチ(+) → 円の中心は cy より下、下アーチ(-) → cy より上
-  const sign = arch > 0 ? 1 : -1;
-  const centerX = cx;
-  const centerY = cy + sign * R;  // 円の中心
-
-  // 弧の頂点角度：常に -π/2（円の真上）を使う
-  // 上アーチ: 中心が cy の下 → 真上 = cy の方向 ✓
-  // 下アーチ: 中心が cy の上 → 真下 = cy の方向だが、
-  //           あえて -π/2 を使い、文字の向きを保ったまま弧を反転させる
-  const apexAngle  = -Math.PI / 2;
+  // 総弧長に対応する総角度
   const totalAngle = L / R;
-  // 下アーチは左右を反転させる（文字順を保ちつつ弧を下向きに）
-  const startAngle = apexAngle + (sign > 0 ? -1 : 1) * totalAngle / 2;
-  const angleStep  = sign; // +1: 左→右、-1: 右→左（反転打消し用）
 
   // 各文字の弧長オフセット（文字中心）
   let cumW = 0;
@@ -481,32 +458,53 @@ function drawText(ctx, text, style) {
     return offset;
   });
 
-  // 1文字描画ヘルパー
-  const drawChar = (c, arcLen, doStroke) => {
-    const angle = startAngle + angleStep * arcLen / R;
-    ctx.save();
-    ctx.translate(
-      centerX + R * Math.cos(angle),
-      centerY + R * Math.sin(angle)
-    );
-    // 上アーチ: angle + π/2 で文字が上向き
-    // 下アーチ: sign=-1 なので angle - π/2 → 文字が下向きにならず正立を保つ
-    ctx.rotate(angle + sign * Math.PI / 2);
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    if (doStroke) {
-      ctx.lineWidth   = outlineWidth * 2;
-      ctx.lineJoin    = 'round';
-      ctx.strokeStyle = outlineColor;
-      ctx.strokeText(c, 0, 0);
-    } else {
-      setShadow();
-      ctx.fillStyle = color;
-      ctx.fillText(c, 0, 0);
-      clearShadow();
-    }
-    ctx.restore();
-  };
+  let drawChar;
+
+  if (arch > 0) {
+    // ── 上アーチ ──
+    // 円の中心 = (cx, cy + R)  ← cy より下
+    // 弧の頂点（文字列中央）= 中心から真上 = 角度 -π/2
+    // 文字は左から右へ角度が増加（反時計→時計回り）
+    const centerY   = cy + R;
+    const startAng  = -Math.PI / 2 - totalAngle / 2;
+
+    drawChar = (c, arcLen, doStroke) => {
+      const angle = startAng + arcLen / R;
+      ctx.save();
+      ctx.translate(cx + R * Math.cos(angle), centerY + R * Math.sin(angle));
+      ctx.rotate(angle + Math.PI / 2);  // 接線方向 → 文字が正立
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      if (doStroke) {
+        ctx.lineWidth = outlineWidth * 2; ctx.lineJoin = 'round';
+        ctx.strokeStyle = outlineColor; ctx.strokeText(c, 0, 0);
+      } else {
+        setShadow(); ctx.fillStyle = color; ctx.fillText(c, 0, 0); clearShadow();
+      }
+      ctx.restore();
+    };
+  } else {
+    // ── 下アーチ ──
+    // 円の中心 = (cx, cy - R)  ← cy より上
+    // 弧の頂点（文字列中央）= 中心から真下 = 角度 +π/2
+    // 文字は左から右へ角度が減少（反時計回り）
+    const centerY   = cy - R;
+    const startAng  = Math.PI / 2 + totalAngle / 2;  // 左端は +π/2 より右側
+
+    drawChar = (c, arcLen, doStroke) => {
+      const angle = startAng - arcLen / R;  // 右に進むほど角度が減る
+      ctx.save();
+      ctx.translate(cx + R * Math.cos(angle), centerY + R * Math.sin(angle));
+      ctx.rotate(angle - Math.PI / 2);  // 下アーチの接線方向で正立
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      if (doStroke) {
+        ctx.lineWidth = outlineWidth * 2; ctx.lineJoin = 'round';
+        ctx.strokeStyle = outlineColor; ctx.strokeText(c, 0, 0);
+      } else {
+        setShadow(); ctx.fillStyle = color; ctx.fillText(c, 0, 0); clearShadow();
+      }
+      ctx.restore();
+    };
+  }
 
   if (outlineWidth > 0) {
     arcOffsets.forEach((a, i) => drawChar(chars[i], a, true));
